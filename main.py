@@ -1,4 +1,6 @@
+import telebot
 import sys
+sys.path.append('command2.py')
 import os
 from pyrogram import Client
 from pyrogram.errors import FloodWait
