@@ -6,7 +6,8 @@ from status import get_file_status, convert_to_streamable_video
 
 
 # Get the environment variables
-API_ID = int(os.environ.get("7068313"))
+os.environ["API_ID"] = "7068313"
+API_ID = int(os.environ.get("API_ID"))
 API_HASH = os.environ.get("d7446aca34e84b8539a1a8817630d1b5")
 BOT_TOKEN = os.environ.get("5959482663:AAGnBMV2Rbrtr5k01AxYXrw-bRSJ9mIEjwk")
 
@@ -53,5 +54,5 @@ def convert_command_handler(_, message: Message) -> None:
 
 
 # Start the bot
-if name == "main":
+if __name__ == "__main__":
     app.run()
