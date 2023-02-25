@@ -1,7 +1,8 @@
 import time
+from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 class DownloadStatus:
-    def __init__(self, file_size):
+    def init(self, file_size):
         self.file_size = file_size
         self.total_downloaded = 0
         self.start_time = time.time()
@@ -27,7 +28,7 @@ class DownloadStatus:
 
 
 class UploadStatus:
-    def __init__(self, file_size):
+    def init(self, file_size):
         self.file_size = file_size
         self.total_uploaded = 0
         self.start_time = time.time()
@@ -51,6 +52,7 @@ class UploadStatus:
         remaining_time = remaining_bytes / self.get_speed() if self.get_speed() > 0 else 0
         return remaining_time
 
+
 def get_status_message(download_status=None, upload_status=None):
     message = ""
     
@@ -73,3 +75,15 @@ def get_status_message(download_status=None, upload_status=None):
         message += f"Remaining Time: {time.strftime('%H:%M:%S', time.gmtime(upload_status.get_remaining_time()))}\n\n"
     
     return message
+
+def get_progress_bar_message(download_status=None, upload_status=None):
+    if download_status is not None:
+        progress = int(download_status.get_progress_percentage() / 2)
+        progress_bar = "#" * progress + "-" * (50 - progress)
+        return f"Progress: {download_status.get_progress_percentage()}%\n[{progress_bar}]"
+    elif upload_status is not None:
+        progress = int(upload_status.get_progress_percentage() / 2)
+        progress_bar = "#" * progress + "-" * (50 - progress)
+        return f"Progress: {upload_status.get_progress_percentage()}%\n[{progress_bar}]"
+    else:
+        return ""
