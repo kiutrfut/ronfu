@@ -65,5 +65,5 @@ def handle_convert2(message):
     convert2(bot, message)
 
 
-if name == 'main':
+if __name__ == '__main__':
     bot.polling()
