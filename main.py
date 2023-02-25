@@ -1,24 +1,16 @@
 import os
 import logging
+import telegram
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
-from pyrogram import Client, filters
-from pyrogram.errors import FloodWait
-from pyrogram.types import Message
+
 
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
-
 logger = logging.getLogger(name)
 
 # Set up telegram bot
 telegram_token = "5562112612:AAH7Sbz2iIAdoPknjv0FnuiNbiDa_5OFYQA"
-updater = Updater(token=telegram_token, use_context=True)
-dispatcher = updater.dispatcher
-
-# Set up Pyrogram client
-api_id = 7068313
-api_hash = "d7446aca34e84b8539a1a8817630d1b5"
-app = Client("my_account", api_id, api_hash)
+bot = telegram.Bot(token=telegram_token)
 
 
 # Define start command
@@ -64,12 +56,17 @@ def vid(update, context):
     os.system(f"ffmpeg -i {input_filename} {output_filename}")
 
     # Upload the converted file
-    context.bot.send_video(chat_id=update.effective_chat.id, video=open(output_filename, 'rb'))
+    with open(output_filename, 'rb') as f:
+        context.bot.send_video(chat_id=update.effective_chat.id, video=f)
 
     # Remove the downloaded and converted files
     os.remove(input_filename)
     os.remove(output_filename)
 
+
+# Set up telegram bot using Updater
+updater = Updater(token=telegram_token, use_context=True)
+dispatcher = updater.dispatcher
 
 # Register handlers
 start_handler = CommandHandler('start', start)
@@ -86,12 +83,4 @@ dispatcher.add_handler(vid_handler)
 
 # Start the bot
 updater.start_polling()
-
-# Start Pyrogram client
-app.start()
-
-# Run the bot
 updater.idle()
-
-# Stop Pyrogram client
-app.stop()
