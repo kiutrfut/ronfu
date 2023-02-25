@@ -74,6 +74,15 @@ def convert_to_mp4(file_path):
     subprocess.run(['ffmpeg', '-i', file_path, '-c:v', 'libx264', '-preset', 'medium', '-crf', '23', '-c:a', 'aac', '-b:a', '128k', '-ac', '2', '-y', mp4_path])
     return mp4_path
 
-if __name__ == 'main':
+if name == 'main':
     updater = telegram.ext.Updater(token=TOKEN, use_context=True)
     dp = updater.dispatcher
+
+    dp.add_handler(telegram.ext.CommandHandler('start', handle_start))
+    dp.add_handler(telegram.ext.CommandHandler('help', handle_help))
+    dp.add_handler(telegram.ext.CommandHandler('vid', handle_vid))
+    dp.add_handler(telegram.ext.CommandHandler('mp4', handle_mp4))
+    dp.add_handler(telegram.ext.CommandHandler('status', handle_status))
+
+    updater.start_polling()
+    updater.idle()
