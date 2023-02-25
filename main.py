@@ -1,86 +1,45 @@
 import os
-import logging
-import telegram
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
+from pyrogram import Client, filters
+from moviepy.editor import *
+
+# Set your API credentials and bot token here
+API_ID = 7068313
+API_HASH = "d7446aca34e84b8539a1a8817630d1b5"
+BOT_TOKEN = "5959482663:AAGnBMV2Rbrtr5k01AxYXrw-bRSJ9mIEjwk"
+
+app = Client("my_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
 
-# Enable logging
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
-logger = logging.getLogger(name)
-
-# Set up telegram bot
-telegram_token = "5562112612:AAH7Sbz2iIAdoPknjv0FnuiNbiDa_5OFYQA"
-bot = telegram.Bot(token=telegram_token)
+@app.on_message(filters.command("start"))
+async def start_command(client, message):
+    await message.reply_text("Hi! Send me any file and I'll convert it to video.")
 
 
-# Define start command
-def start(update, context):
-    context.bot.send_message(chat_id=update.effective_chat.id, text="Hi! I'm a bot that can convert any file to video format. Use /vid command to convert your file!")
+@app.on_message(filters.document)
+async def convert_to_video(client, message):
+    # Download the file to the server
+    file_path = await message.download()
+
+    # Check if the file is a video
+    if not any(file_path.endswith(ext) for ext in [".mp4", ".avi", ".mov", ".wmv"]):
+        # Convert the file to mp4 format
+        video_path = os.path.splitext(file_path)[0] + ".mp4"
+        video = VideoFileClip(file_path)
+        video.write_videofile(video_path)
+
+        # Send the converted file back to the user
+        await client.send_video(chat_id=message.chat.id, video=video_path)
+
+        # Remove the downloaded files from the server
+        os.remove(file_path)
+        os.remove(video_path)
+    else:
+        # Send the original file back to the user
+        await client.send_document(chat_id=message.chat.id, document=file_path)
+
+        # Remove the downloaded file from the server
+        os.remove(file_path)
 
 
-# Define help command
-def help(update, context):
-    context.bot.send_message(chat_id=update.effective_chat.id, text="You can use the following commands:\n\n/vid - Convert any file to video format\n/status - Check the status of your video conversion")
-
-
-# Define status command
-def status(update, context):
-    # Check the status of the user's video conversion
-    # You can implement this part based on your specific use case
-    context.bot.send_message(chat_id=update.effective_chat.id, text="Your video conversion is in progress. Please wait for a moment.")
-
-
-# Define vid command
-def vid(update, context):
-    # Check if the user has sent a file
-    if not update.message.document:
-        context.bot.send_message(chat_id=update.effective_chat.id, text="Please send a file to convert to video format.")
-        return
-
-    # Get the file
-    file = context.bot.get_file(update.message.document.file_id)
-
-    # Check if the file is larger than 1.5GB
-    if file.file_size > 1.5 * 1024 * 1024 * 1024:
-        context.bot.send_message(chat_id=update.effective_chat.id, text="The file you sent is too large to convert. Please send a file that is less than 1.5GB.")
-        return
-
-    # Download the file
-    file.download()
-
-    # Convert the file to video format
-    # You can implement this part based on your specific use case
-    # Here's an example using ffmpeg to convert the file to an mp4 video
-    input_filename = file.file_path
-    output_filename = os.path.splitext(input_filename)[0] + ".mp4"
-    os.system(f"ffmpeg -i {input_filename} {output_filename}")
-
-    # Upload the converted file
-    with open(output_filename, 'rb') as f:
-        context.bot.send_video(chat_id=update.effective_chat.id, video=f)
-
-    # Remove the downloaded and converted files
-    os.remove(input_filename)
-    os.remove(output_filename)
-
-
-# Set up telegram bot using Updater
-updater = Updater(token=telegram_token, use_context=True)
-dispatcher = updater.dispatcher
-
-# Register handlers
-start_handler = CommandHandler('start', start)
-dispatcher.add_handler(start_handler)
-
-help_handler = CommandHandler('help', help)
-dispatcher.add_handler(help_handler)
-
-status_handler = CommandHandler('status', status)
-dispatcher.add_handler(status_handler)
-
-vid_handler = CommandHandler('vid', vid)
-dispatcher.add_handler(vid_handler)
-
-# Start the bot
-updater.start_polling()
-updater.idle()
+if name == "main":
+    app.run()
