@@ -42,5 +42,5 @@ def convert_to_streamable_video(chat_id: int, file_id: str, file_name: str, file
     subprocess.run(["ffmpeg", "-i", file_path, "-c:v", "libx264", "-preset", "ultrafast", "-c:a", "copy", streamable_path])
     return streamable_path
 
-if name == 'main':
+if __name__ == '__main__':
     app.run()
