@@ -4,7 +4,7 @@ import os
 import logging
 from pyrogram import Client, filters
 from pyrogram.types import Message
-from status import get_file_status, get_video_file_id, convert_to_streamable_video
+from status import get_file_status, convert_to_streamable_video
 
 
 # Get the environment variables
@@ -33,9 +33,9 @@ def start_command_handler(_, message: Message) -> None:
 # Define the /status command handler
 @app.on_message(filters.command(["status"]))
 def status_command_handler(_, message: Message) -> None:
-    file_id = get_video_file_id(message.reply_to_message) if message.reply_to_message else None
+    file_id = message.reply_to_message.document.file_id if message.reply_to_message and message.reply_to_message.document else None
     if not file_id:
-        message.reply_text("Please reply to a video file or stream to get its status.")
+        message.reply_text("Please reply to a file to get its status.")
         return
 
     status_msg = get_file_status(app, message.chat.id, file_id)
@@ -45,12 +45,12 @@ def status_command_handler(_, message: Message) -> None:
 # Define the /convert command handler
 @app.on_message(filters.command(["convert"]))
 def convert_command_handler(_, message: Message) -> None:
-    file_id = get_video_file_id(message.reply_to_message) if message.reply_to_message else None
-    if not file_id:
-        message.reply_text("Please reply to a video file or stream to convert it.")
+    if not message.reply_to_message or not message.reply_to_message.video:
+        message.reply_text("Please reply to a video file to convert it.")
         return
 
-    file_name = message.reply_to_message.document.file_name
+    file_id = message.reply_to_message.video.file_id
+    file_name = message.reply_to_message.video.file_name
     chat_id = message.chat.id
     file_path = app.download_media(file_id)
     streamable_path = convert_to_streamable_video(chat_id, file_id, file_name, file_path)
@@ -71,4 +71,4 @@ def convert_to_streamable_video(chat_id: int, file_id: str, file_name: str, file
     os.makedirs(os.path.dirname(streamable_file_path), exist_ok=True)
 
     # Convert the video to a streamable format using ffmpeg
-    subprocess.run(['ffmpeg', '-y', '-i', file_path, '-c:v', 'libx264', '-preset',
+    subprocess.run(['ffmpeg', '-y', '-i', file_path, '-c:v', 'libx264', '-preset', 'fast', '-profile:v', 'baseline
