@@ -17,30 +17,34 @@ status_message_id = None
 async def start_command(client, message):
     await message.reply_text("Hi! Send me any file and I'll convert it to video.")
 
-@app.on_message(filters.document)
-async def convert_to_video(client, message):
-    # Download the file to the server
-    file_path = await message.download()
+@app.on_message(filters.command("convert"))
+async def convert_command(client, message):
+    # Check if the message has a reply and if it is a document
+    if message.reply_to_message and message.reply_to_message.document:
+        # Download the file to the server
+        file_path = await message.reply_to_message.download()
 
-    # Check if the file is a video
-    if not any(file_path.endswith(ext) for ext in [".mp4", ".avi", ".mov", ".wmv"]):
-        # Convert the file to mp4 format
-        video_path = os.path.splitext(file_path)[0] + ".mp4"
-        video = VideoFileClip(file_path)
-        video.write_videofile(video_path)
+        # Check if the file is a video
+        if not any(file_path.endswith(ext) for ext in [".mp4", ".avi", ".mov", ".wmv"]):
+            # Convert the file to mp4 format
+            video_path = os.path.splitext(file_path)[0] + ".mp4"
+            video = VideoFileClip(file_path)
+            video.write_videofile(video_path)
 
-        # Send the converted file back to the user
-        await client.send_video(chat_id=message.chat.id, video=video_path)
+            # Send the converted file back to the user
+            await client.send_video(chat_id=message.chat.id, video=video_path)
 
-        # Remove the downloaded files from the server
-        os.remove(file_path)
-        os.remove(video_path)
+            # Remove the downloaded files from the server
+            os.remove(file_path)
+            os.remove(video_path)
+        else:
+            # Send the original file back to the user
+            await client.send_document(chat_id=message.chat.id, document=file_path)
+
+            # Remove the downloaded file from the server
+            os.remove(file_path)
     else:
-        # Send the original file back to the user
-        await client.send_document(chat_id=message.chat.id, document=file_path)
-
-        # Remove the downloaded file from the server
-        os.remove(file_path)
+        await message.reply_text("Please reply to a document with /convert to convert it to video.")
 
 @app.on_message(filters.command("status"))
 async def get_status(client, message):
