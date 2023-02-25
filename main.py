@@ -11,9 +11,14 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 logger = logging.getLogger(name)
 
 # Set up telegram bot
-telegram_token = "5959482663:AAGnBMV2Rbrtr5k01AxYXrw-bRSJ9mIEjwk"
+telegram_token = "5562112612:AAH7Sbz2iIAdoPknjv0FnuiNbiDa_5OFYQA"
 updater = Updater(token=telegram_token, use_context=True)
 dispatcher = updater.dispatcher
+
+# Set up Pyrogram client
+api_id = 7068313
+api_hash = "d7446aca34e84b8539a1a8817630d1b5"
+app = Client("my_account", api_id, api_hash)
 
 
 # Define start command
@@ -81,4 +86,12 @@ dispatcher.add_handler(vid_handler)
 
 # Start the bot
 updater.start_polling()
+
+# Start Pyrogram client
+app.start()
+
+# Run the bot
 updater.idle()
+
+# Stop Pyrogram client
+app.stop()
