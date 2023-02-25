@@ -1,54 +1,73 @@
 import os
 import logging
-from dotenv import load_dotenv
 from pyrogram import Client, filters
 from pyrogram.types import Message
-from status import convert_to_streamable_video
-
-
-# Load environment variables
-load_dotenv()
+from status import get_file_status, convert_to_streamable_video
 
 # Enable logging
 logging.basicConfig(level=logging.INFO)
 
+# Load environment variables
+API_ID = int(os.environ.get("7068313"))
+API_HASH = os.environ.get("d7446aca34e84b8539a1a8817630d1b5")
+BOT_TOKEN = os.environ.get("5959482663:AAGnBMV2Rbrtr5k01AxYXrw-bRSJ9mIEjwk")
 
-# Create a Pyrogram client instance
-app = Client(
-    "my_bot",
-    api_id=os.getenv("7068313"),
-    api_hash=os.getenv("d7446aca34e84b8539a1a8817630d1b5"),
-    bot_token=os.getenv("5959482663:AAGnBMV2Rbrtr5k01AxYXrw-bRSJ9mIEjwk")
-)
+# Create a Pyrogram client
+app = Client("my_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
 
-# Handler for /start command
+# Handler function for /start command
 @app.on_message(filters.command("start"))
 async def start_command_handler(client: Client, message: Message):
-    await message.reply_text("Hi, send me a file and I'll convert it to a streamable video!")
+    await message.reply_text("Hi there! Send me any file and I'll tell you if it's streamable.")
 
 
-# Handler for /convert command
+# Handler function for /status command
+@app.on_message(filters.command("status"))
+async def status_command_handler(client: Client, message: Message):
+    # Check if a file is attached
+    if not message.document:
+        await message.reply_text("Please attach a file.")
+        return
+
+    # Get file status
+    file_id = message.document.file_id
+    file_name = message.document.file_name
+    file_status = get_file_status(file_id)
+
+    # Reply with file status
+    if file_status:
+        await message.reply_text(f"{file_name} is streamable.")
+    else:
+        await message.reply_text(f"{file_name} is not streamable.")
+
+
+# Handler function for /convert command
 @app.on_message(filters.command("convert"))
 async def convert_command_handler(client: Client, message: Message):
-    # Check if message has a reply and has a media
-    if not message.reply_to_message or not message.reply_to_message.media:
-        await message.reply_text("Reply to a media file to convert it to a streamable video!")
+    # Check if a file is attached
+    if not message.document:
+        await message.reply_text("Please attach a file.")
         return
 
-    # Convert media to streamable video
-    file_path = await message.reply_to_message.download()
-    streamable_path = convert_to_streamable_video(file_path)
-    if not streamable_path:
-        await message.reply_text("Failed to convert the media to a streamable video!")
-        return
+    # Download the file
+    file_id = message.document.file_id
+    file_name = message.document.file_name
+    file_path = await client.download_media(message=message)
 
-    # Send the streamable video as a reply
-    await message.reply_video(streamable_path)
+    # Convert to streamable format
+    streamable_path = convert_to_streamable_video(message.chat.id, file_id, file_name, file_path)
 
-    # Remove temporary files
-    os.remove(file_path)
-    os.remove(streamable_path)
+    # Reply with the streamable video
+    if streamable_path:
+        await client.send_video(
+            chat_id=message.chat.id,
+            video=streamable_path,
+            reply_to_message_id=message.message_id,
+            caption=f"{file_name} is now streamable.",
+        )
+    else:
+        await message.reply_text(f"{file_name} cannot be converted to streamable format.")
 
 
 # Run the client
