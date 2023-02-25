@@ -33,5 +33,5 @@ async def video_handler(client, message):
     os.remove(video_path)
 
 
-if name == "main":
+if __name__ == "__main__":
     app.run()
