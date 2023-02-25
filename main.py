@@ -57,5 +57,5 @@ def convert_command_handler(_, message: Message) -> None:
 
 
 # Start the bot
-if name == "main":
+if __name__ == "__main__":
     app.run()
