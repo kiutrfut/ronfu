@@ -1,6 +1,4 @@
 import telebot
-import sys
-sys.path.append('command2.py')
 import os
 from pyrogram import Client
 from pyrogram.errors import FloodWait
@@ -10,7 +8,7 @@ import time
 from command2 import convert2  # import the convert2 command
 
 # Replace YOUR_TOKEN_HERE with your Telegram Bot API token
-bot = telebot.TeleBot("5562112612:AAH7Sbz2iIAdoPknjv0FnuiNbiDa_5OFYQA")
+bot = telebot.TeleBot("5959482663:AAGnBMV2Rbrtr5k01AxYXrw-bRSJ9mIEjwk")
 
 # Replace with your API_ID and API_HASH
 api_id = 7068313
