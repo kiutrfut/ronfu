@@ -6,10 +6,13 @@ from status import get_file_status, convert_to_streamable_video
 
 
 # Get the environment variables
-os.environ["API_ID"] = "7068313"
-API_ID = os.environ.get('API_ID', 7068313)
-API_HASH = os.environ.get("d7446aca34e84b8539a1a8817630d1b5")
-BOT_TOKEN = os.environ.get("5959482663:AAGnBMV2Rbrtr5k01AxYXrw-bRSJ9mIEjwk")
+API_ID = int(os.environ.get("API_ID", 7068313))
+API_HASH = os.environ.get("API_HASH", "d7446aca34e84b8539a1a8817630d1b5")
+BOT_TOKEN = os.environ.get("BOT_TOKEN", "5959482663:AAGnBMV2Rbrtr5k01AxYXrw-bRSJ9mIEjwk")
+
+if API_ID == 0 or not API_HASH or not BOT_TOKEN:
+    print("Please provide API_ID, API_HASH and BOT_TOKEN as environment variables.")
+    quit()
 
 # Create the Client and connect to Telegram
 app = Client("ronfu_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
@@ -54,5 +57,5 @@ def convert_command_handler(_, message: Message) -> None:
 
 
 # Start the bot
-if __name__ == "__main__":
+if name == "main":
     app.run()
