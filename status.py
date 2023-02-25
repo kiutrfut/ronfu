@@ -1,7 +1,7 @@
 import time
 
 class DownloadStatus:
-    def init(self, file_size):
+    def __init__(self, file_size):
         self.file_size = file_size
         self.total_downloaded = 0
         self.start_time = time.time()
@@ -27,7 +27,7 @@ class DownloadStatus:
 
 
 class UploadStatus:
-    def init(self, file_size):
+    def __init__(self, file_size):
         self.file_size = file_size
         self.total_uploaded = 0
         self.start_time = time.time()
