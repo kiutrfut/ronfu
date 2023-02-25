@@ -71,4 +71,4 @@ def convert_to_streamable_video(chat_id: int, file_id: str, file_name: str, file
     os.makedirs(os.path.dirname(streamable_file_path), exist_ok=True)
 
     # Convert the video to a streamable format using ffmpeg
-    subprocess.run(['ffmpeg', '-y', '-i', file_path, '-c:v', 'libx264', '-preset', 'fast', '-profile:v', 'baseline
+    subprocess.run(['ffmpeg', '-y', '-i', file_path, '-c:v', 'libx264', '-preset', 'fast', '-profile:v', 'baseline',
