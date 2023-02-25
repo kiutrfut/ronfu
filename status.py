@@ -1,57 +1,43 @@
 import os
-import ffmpeg
-from pyrogram import Client, filters
-from pyrogram.types import Message
-from pyrogram.errors import MessageNotModified
+import subprocess
 
-app = Client("my_account")
+from pyrogram.errors import FilePartsInvalid, FileReferenceEmpty, FileIdInvalid
+from pyrogram.types import Video, Message
+from pyrogram import Client
 
 
-@app.on_message(filters.command(["status"]))
-async def status_command_handler(client: Client, message: Message):
-    chat_id = message.chat.id
-    video_file_path = f"{chat_id}.mp4"
-    if os.path.exists(video_file_path):
-        video_duration = await get_video_duration(video_file_path)
-        status_msg = f"Your video is still being processed! Please wait for {video_duration} minutes!"
-    else:
-        status_msg = "No video is being processed at the moment."
+def get_file_status(client: Client, chat_id: int, file_id: str) -> str:
     try:
-        await message.reply_text(status_msg)
-    except MessageNotModified:
-        pass
+        file_info = client.get_file_info(file_id)
+        file_size = file_info.size
+        file_name = file_info.file_name
+        return f"File Name: {file_name}\nFile Size: {file_size} bytes"
+    except (FilePartsInvalid, FileReferenceEmpty, FileIdInvalid):
+        return "Failed to fetch file information."
 
 
-@app.on_message(filters.command(["convert"]))
-async def convert_command_handler(client: Client, message: Message):
-    chat_id = message.chat.id
-    replied_msg = message.reply_to_message
-    if replied_msg is None:
-        await message.reply_text("Please reply to a video file to convert.")
-        return
-    elif replied_msg.video is None:
-        await message.reply_text("Please reply to a video file to convert.")
-        return
-    else:
-        input_file_path = f"{chat_id}.{replied_msg.video.file_name.split('.')[-1]}"
-        await replied_msg.download(input_file_path)
-        await message.reply_text("Your video is being processed. Please wait...")
-        await convert_to_streamable_video(input_file_path, chat_id)
-        await message.reply_video(video=video_file_path)
+def convert_to_streamable_video(client: Client, chat_id: int, file_id: str, file_name: str) -> bool:
+    try:
+        temp_path = os.path.join("temp", file_name)
+        client.download_media(file_id, temp_path)
 
+        # Generate output file name with mp4 extension
+        output_file_name = os.path.splitext(file_name)[0] + ".mp4"
+        output_path = os.path.join("temp", output_file_name)
 
-async def convert_to_streamable_video(input_file_path: str, chat_id: int):
-    (
-        ffmpeg
-        .input(input_file_path)
-        .output(f"{chat_id}.mp4", pix_fmt="yuv420p", preset="ultrafast", tune="film", video_bitrate=5000, audio_codec="aac", audio_bitrate="192k")
-        .run(overwrite_output=True)
-    )
-    os.remove(input_file_path)
+        # Run ffmpeg command to convert file to streamable mp4 format
+        cmd = f"ffmpeg -i {temp_path} -c:v libx264 -profile:v main -level 3.1 -preset medium -crf 23 -c:a aac -b:a 128k -movflags +faststart {output_path}"
+        subprocess.run(cmd, shell=True, check=True)
 
+        # Upload converted video file to Telegram as video message
+        client.send_video(
+            chat_id=chat_id,
+            video=output_path,
+            caption="Converted video",
+            supports_streaming=True
+        )
 
-async def get_video_duration(video_file_path: str) -> int:
-    probe = ffmpeg.probe(video_file_path)
-    video_info = next(stream for stream in probe['streams'] if stream['codec_type'] == 'video')
-    duration = int(float(video_info['duration']))
-    return duration
+        return True
+    except Exception as e:
+        print(e)
+        return False
