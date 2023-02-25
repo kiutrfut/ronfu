@@ -1,55 +1,57 @@
 import os
-
 from pyrogram import Client
-from pyrogram.types import Message
 from hurry.filesize import size
-from humanfriendly import format_timespan
+import subprocess
 
 
 async def get_file_status(client: Client, chat_id: int, file_id: str) -> str:
-    message = await client.send_message(chat_id, f"Checking status for file ID: {file_id}...")
-    file_info = await client.get_file_info(file_id)
-    file_size = file_info.size
-    local_file_path = f"./downloads/{file_id}"
-    if os.path.exists(local_file_path):
-        local_file_size = os.path.getsize(local_file_path)
-        download_progress = int((local_file_size / file_size) * 100)
-        download_speed = size(file_size / file_info.duration)
-        download_eta = format_timespan((file_size - local_file_size) / file_info.avg_download_speed)
-        status = f"Download Status:\nProgress: {download_progress}%\nSpeed: {download_speed}/s\nETA: {download_eta}"
-        await message.edit(status)
-    else:
-        status = "Download Status: Not Started Yet"
-        await message.edit(status)
-    return status
+    try:
+        file_info = await client.get_file_info(file_id)
+        file_size = get_file_size(file_info.file_size)
+        status_msg = f"File name: {file_info.file_name}\nFile size: {file_size}"
+        if file_info.is_audio:
+            status_msg += "\n\n<b>Cannot convert audio files to streamable format!</b>"
+        elif file_info.is_video:
+            status_msg += "\n\nUse /convert command to convert to streamable format."
+        else:
+            status_msg += "\n\n<b>This type of file cannot be converted to streamable format!</b>"
+        return status_msg
+    except Exception as e:
+        print(e)
+        return "An error occurred while fetching file information!"
 
 
-async def convert_to_streamable_video(client: Client, chat_id: int, file_id: str, file_name: str, file_path: str) -> str:
-    message = await client.send_message(chat_id, f"Converting to streamable format...")
-    streamable_file_path = f"./streamable/{file_name}"
+async def get_video_info(file_path: str) -> dict:
+    try:
+        result = subprocess.check_output(['ffprobe', '-v', 'quiet', '-print_format', 'json', '-show_format', '-show_streams', file_path])
+        video_info = eval(result.decode('utf-8'))
+        return video_info
+    except Exception as e:
+        print(e)
+        return {}
+
+
+def get_file_size(file_size_bytes: int) -> str:
+    return size(file_size_bytes)
+
+
+async def convert_to_streamable_video(chat_id: int, file_id: str, file_name: str, file_path: str) -> str:
+    try:
+        duration = subprocess.check_output(['ffprobe', '-i', file_path, '-show_entries', 'format=duration', '-v', 'quiet', '-of', 'csv=%s' % ("p=0")])
+        duration = int(float(duration))
+    except:
+        duration = 0
+    
+    streamable_file_path = os.path.join("downloads", f"{file_id}.mp4")
     if os.path.exists(streamable_file_path):
         os.remove(streamable_file_path)
-    conversion_command = [
-        "ffmpeg",
-        "-i", file_path,
-        "-preset", "ultrafast",
-        "-c:a", "copy",
-        "-c:v", "libx264",
-        "-crf", "23",
-        "-maxrate", "1M",
-        "-bufsize", "2M",
-        "-vf", "scale='if(gt(a,16/9),1280,-2)':'if(gt(a,16/9),-2,720)',format=yuv420p",
-        "-movflags", "faststart",
-        streamable_file_path
-    ]
-    process = await asyncio.create_subprocess_exec(*conversion_command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+    
+    command = ['ffmpeg', '-i', file_path, '-c', 'copy', '-movflags', '+faststart', '-hide_banner', '-loglevel', 'error', '-nostats', '-f', 'mp4', '-y', streamable_file_path]
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     while True:
-        output = await process.stdout.readline()
+        output = process.stdout.readline()
         if process.poll() is not None:
             break
         if output:
-            await message.edit(f"Converting to streamable format...\n
-{output.decode().strip()}
-")
-    await message.edit("Conversion completed successfully!")
+            print(output.strip())
     return streamable_file_path
