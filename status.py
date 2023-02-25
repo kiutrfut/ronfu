@@ -1,89 +1,57 @@
-import time
-from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+import os
+import ffmpeg
+from pyrogram import Client, filters
+from pyrogram.types import Message
+from pyrogram.errors import MessageNotModified
 
-class DownloadStatus:
-    def init(self, file_size):
-        self.file_size = file_size
-        self.total_downloaded = 0
-        self.start_time = time.time()
-        
-    def update(self, bytes_amount):
-        self.total_downloaded += bytes_amount
-    
-    def get_progress_percentage(self):
-        return round(self.total_downloaded / self.file_size * 100, 2)
-    
-    def get_elapsed_time(self):
-        return time.time() - self.start_time
-    
-    def get_speed(self):
-        elapsed_time = self.get_elapsed_time()
-        speed = self.total_downloaded / elapsed_time
-        return speed if elapsed_time > 0 else 0
-    
-    def get_remaining_time(self):
-        remaining_bytes = self.file_size - self.total_downloaded
-        remaining_time = remaining_bytes / self.get_speed() if self.get_speed() > 0 else 0
-        return remaining_time
+app = Client("my_account")
 
 
-class UploadStatus:
-    def init(self, file_size):
-        self.file_size = file_size
-        self.total_uploaded = 0
-        self.start_time = time.time()
-        
-    def update(self, bytes_amount):
-        self.total_uploaded += bytes_amount
-    
-    def get_progress_percentage(self):
-        return round(self.total_uploaded / self.file_size * 100, 2)
-    
-    def get_elapsed_time(self):
-        return time.time() - self.start_time
-    
-    def get_speed(self):
-        elapsed_time = self.get_elapsed_time()
-        speed = self.total_uploaded / elapsed_time
-        return speed if elapsed_time > 0 else 0
-    
-    def get_remaining_time(self):
-        remaining_bytes = self.file_size - self.total_uploaded
-        remaining_time = remaining_bytes / self.get_speed() if self.get_speed() > 0 else 0
-        return remaining_time
-
-
-def get_status_message(download_status=None, upload_status=None):
-    message = ""
-    
-    if download_status is not None:
-        message += f"Download Status:\n"
-        message += f"Progress: {download_status.get_progress_percentage()}%\n"
-        message += f"Downloaded: {size(download_status.total_downloaded)}\n"
-        message += f"Total Size: {size(download_status.file_size)}\n"
-        message += f"Speed: {size(download_status.get_speed())}/s\n"
-        message += f"Elapsed Time: {time.strftime('%H:%M:%S', time.gmtime(download_status.get_elapsed_time()))}\n"
-        message += f"Remaining Time: {time.strftime('%H:%M:%S', time.gmtime(download_status.get_remaining_time()))}\n\n"
-    
-    if upload_status is not None:
-        message += f"Upload Status:\n"
-        message += f"Progress: {upload_status.get_progress_percentage()}%\n"
-        message += f"Uploaded: {size(upload_status.total_uploaded)}\n"
-        message += f"Total Size: {size(upload_status.file_size)}\n"
-        message += f"Speed: {size(upload_status.get_speed())}/s\n"
-        message += f"Elapsed Time: {time.strftime('%H:%M:%S', time.gmtime(upload_status.get_elapsed_time()))}\n"
-        message += f"Remaining Time: {time.strftime('%H:%M:%S', time.gmtime(upload_status.get_remaining_time()))}\n\n"
-    
-    return message
-
-def get_progress_bar_message(download_status=None, upload_status=None):
-    if download_status is not None:
-        progress = int(download_status.get_progress_percentage() / 2)
-        progress_bar = "#" * progress + "-" * (50 - progress)
-        return f"Progress: {download_status.get_progress_percentage()}%\n[{progress_bar}]"
-    elif upload_status is not None:
-        progress = int(upload_status.get_progress_percentage() / 2)
-        progress_bar = "#" * progress + "-" * (50 - progress)
-        return f"Progress: {upload_status.get_progress_percentage()}%\n[{progress_bar}]"
+@app.on_message(filters.command(["status"]))
+async def status_command_handler(client: Client, message: Message):
+    chat_id = message.chat.id
+    video_file_path = f"{chat_id}.mp4"
+    if os.path.exists(video_file_path):
+        video_duration = await get_video_duration(video_file_path)
+        status_msg = f"Your video is still being processed! Please wait for {video_duration} minutes!"
     else:
-        return ""
+        status_msg = "No video is being processed at the moment."
+    try:
+        await message.reply_text(status_msg)
+    except MessageNotModified:
+        pass
+
+
+@app.on_message(filters.command(["convert"]))
+async def convert_command_handler(client: Client, message: Message):
+    chat_id = message.chat.id
+    replied_msg = message.reply_to_message
+    if replied_msg is None:
+        await message.reply_text("Please reply to a video file to convert.")
+        return
+    elif replied_msg.video is None:
+        await message.reply_text("Please reply to a video file to convert.")
+        return
+    else:
+        input_file_path = f"{chat_id}.{replied_msg.video.file_name.split('.')[-1]}"
+        await replied_msg.download(input_file_path)
+        await message.reply_text("Your video is being processed. Please wait...")
+        await convert_to_streamable_video(input_file_path, chat_id)
+        await message.reply_video(video=video_file_path)
+
+
+async def convert_to_streamable_video(input_file_path: str, chat_id: int):
+    (
+        ffmpeg
+        .input(input_file_path)
+        .output(f"{chat_id}.mp4", pix_fmt="yuv420p", preset="ultrafast", tune="film", video_bitrate=5000, audio_codec="aac", audio_bitrate="192k")
+        .run(overwrite_output=True)
+    )
+    os.remove(input_file_path)
+
+
+async def get_video_duration(video_file_path: str) -> int:
+    probe = ffmpeg.probe(video_file_path)
+    video_info = next(stream for stream in probe['streams'] if stream['codec_type'] == 'video')
+    duration = int(float(video_info['duration']))
+    return duration
