@@ -74,6 +74,6 @@ def convert_to_mp4(file_path):
     subprocess.run(['ffmpeg', '-i', file_path, '-c:v', 'libx264', '-preset', 'medium', '-crf', '23', '-c:a', 'aac', '-b:a', '128k', '-ac', '2', '-y', mp4_path])
     return mp4_path
 
-if name == 'main':
+if __name__ == 'main':
     updater = telegram.ext.Updater(token=TOKEN, use_context=True)
     dp = updater.dispatcher
