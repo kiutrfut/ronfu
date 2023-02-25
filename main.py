@@ -1,10 +1,11 @@
-import telebot
+import sys
 import os
 from pyrogram import Client
 from pyrogram.errors import FloodWait
 from pyrogram.raw.types import InputFile
 from pyrogram.types import Message
 import time
+import telebot
 from command2 import convert2  # import the convert2 command
 
 # Replace YOUR_TOKEN_HERE with your Telegram Bot API token
@@ -55,10 +56,12 @@ def convert(message):
     else:
         bot.reply_to(message, "Please reply to a document to convert it to video format.")
 
+
 # Convert2 command
 @bot.message_handler(commands=['convert2'])
 def handle_convert2(message):
-    convert2(bot, app, message)
+    convert2(bot, message)
+
 
 if name == 'main':
     bot.polling()
