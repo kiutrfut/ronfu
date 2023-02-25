@@ -7,7 +7,7 @@ from status import get_file_status, convert_to_streamable_video
 
 # Get the environment variables
 os.environ["API_ID"] = "7068313"
-API_ID = environ.get('API_ID', 7068313)
+API_ID = os.environ.get('API_ID', 7068313)
 API_HASH = os.environ.get("d7446aca34e84b8539a1a8817630d1b5")
 BOT_TOKEN = os.environ.get("5959482663:AAGnBMV2Rbrtr5k01AxYXrw-bRSJ9mIEjwk")
 
