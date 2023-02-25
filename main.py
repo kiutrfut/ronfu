@@ -1,88 +1,84 @@
 import os
-import telegram
-import subprocess
+import logging
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
+from pyrogram import Client, filters
+from pyrogram.errors import FloodWait
+from pyrogram.types import Message
 
-TOKEN = '5959482663:AAGnBMV2Rbrtr5k01AxYXrw-bRSJ9mIEjwk'
-bot = telegram.Bot(token=TOKEN)
+# Enable logging
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-def convert_to_video(file_path):
-    """
-    Converts the given file to video format.
-    Returns the path of the converted file.
-    """
-    video_path = file_path.split('.')[0] + '.mp4'
-    subprocess.run(['ffmpeg', '-i', file_path, video_path])
-    return video_path
+logger = logging.getLogger(name)
 
-def handle_start(update, context):
-    """
-    Handles the /start command.
-    Sends a welcome message to the user.
-    """
-    context.bot.send_message(chat_id=update.effective_chat.id, text="Welcome to the File Converter Bot! Send me a document file and use the /vid or /mp4 command to convert it to a video or mp4 file, respectively.")
+# Set up telegram bot
+telegram_token = "5959482663:AAGnBMV2Rbrtr5k01AxYXrw-bRSJ9mIEjwk"
+updater = Updater(token=telegram_token, use_context=True)
+dispatcher = updater.dispatcher
 
-def handle_help(update, context):
-    """
-    Handles the /help command.
-    Sends a help message to the user.
-    """
-    help_message = "This bot can convert any document to a video or mp4 file. Here are the available commands:\n\n"
-    help_message += "/start - Get a welcome message\n"
-    help_message += "/help - Get help with using the bot\n"
-    help_message += "/vid - Convert a document file to a video file\n"
-    help_message += "/mp4 - Convert any file to mp4 format\n"
-    help_message += "/status - Check the current status of the bot\n"
-    context.bot.send_message(chat_id=update.effective_chat.id, text=help_message)
 
-def handle_vid(update, context):
-    """
-    Handles the /vid command.
-    Converts the document file sent by the user to video format and sends it back.
-    """
-    file = update.message.document
-    file_path = bot.get_file(file.file_id).download()
-    video_path = convert_to_video(file_path)
-    context.bot.send_video(chat_id=update.effective_chat.id, video=open(video_path, 'rb'))
-    os.remove(file_path)
-    os.remove(video_path)
+# Define start command
+def start(update, context):
+    context.bot.send_message(chat_id=update.effective_chat.id, text="Hi! I'm a bot that can convert any file to video format. Use /vid command to convert your file!")
 
-def handle_mp4(update, context):
-    """
-    Handles the /mp4 command.
-    Converts the file sent by the user to mp4 format and sends it back.
-    """
-    file = update.message.document or update.message.video or update.message.audio or update.message.voice or update.message.video_note or update.message.animation or update.message.photo[-1]
-    file_path = bot.get_file(file.file_id).download()
-    mp4_path = convert_to_mp4(file_path)
-    context.bot.send_document(chat_id=update.effective_chat.id, document=open(mp4_path, 'rb'))
-    os.remove(file_path)
-    os.remove(mp4_path)
 
-def handle_status(update, context):
-    """
-    Handles the /status command.
-    Sends a status message to the user.
-    """
-    context.bot.send_message(chat_id=update.effective_chat.id, text="I'm alive and ready to convert your files!")
+# Define help command
+def help(update, context):
+    context.bot.send_message(chat_id=update.effective_chat.id, text="You can use the following commands:\n\n/vid - Convert any file to video format\n/status - Check the status of your video conversion")
 
-def convert_to_mp4(file_path):
-    """
-    Converts the given file to mp4 format.
-    Returns the path of the converted file.
-    """
-    mp4_path = file_path.split('.')[0] + '.mp4'
-    subprocess.run(['ffmpeg', '-i', file_path, '-c:v', 'libx264', '-preset', 'medium', '-crf', '23', '-c:a', 'aac', '-b:a', '128k', '-ac', '2', '-y', mp4_path])
-    return mp4_path
 
-if __name__ == '__main__':
-    updater = telegram.ext.Updater(token=TOKEN, use_context=True)
-    dp = updater.dispatcher
+# Define status command
+def status(update, context):
+    # Check the status of the user's video conversion
+    # You can implement this part based on your specific use case
+    context.bot.send_message(chat_id=update.effective_chat.id, text="Your video conversion is in progress. Please wait for a moment.")
 
-    dp.add_handler(telegram.ext.CommandHandler('start', handle_start))
-    dp.add_handler(telegram.ext.CommandHandler('help', handle_help))
-    dp.add_handler(telegram.ext.CommandHandler('vid', handle_vid))
-    dp.add_handler(telegram.ext.CommandHandler('mp4', handle_mp4))
-    dp.add_handler(telegram.ext.CommandHandler('status', handle_status))
 
-    updater.start_polling()
-    updater.idle()
+# Define vid command
+def vid(update, context):
+    # Check if the user has sent a file
+    if not update.message.document:
+        context.bot.send_message(chat_id=update.effective_chat.id, text="Please send a file to convert to video format.")
+        return
+
+    # Get the file
+    file = context.bot.get_file(update.message.document.file_id)
+
+    # Check if the file is larger than 1.5GB
+    if file.file_size > 1.5 * 1024 * 1024 * 1024:
+        context.bot.send_message(chat_id=update.effective_chat.id, text="The file you sent is too large to convert. Please send a file that is less than 1.5GB.")
+        return
+
+    # Download the file
+    file.download()
+
+    # Convert the file to video format
+    # You can implement this part based on your specific use case
+    # Here's an example using ffmpeg to convert the file to an mp4 video
+    input_filename = file.file_path
+    output_filename = os.path.splitext(input_filename)[0] + ".mp4"
+    os.system(f"ffmpeg -i {input_filename} {output_filename}")
+
+    # Upload the converted file
+    context.bot.send_video(chat_id=update.effective_chat.id, video=open(output_filename, 'rb'))
+
+    # Remove the downloaded and converted files
+    os.remove(input_filename)
+    os.remove(output_filename)
+
+
+# Register handlers
+start_handler = CommandHandler('start', start)
+dispatcher.add_handler(start_handler)
+
+help_handler = CommandHandler('help', help)
+dispatcher.add_handler(help_handler)
+
+status_handler = CommandHandler('status', status)
+dispatcher.add_handler(status_handler)
+
+vid_handler = CommandHandler('vid', vid)
+dispatcher.add_handler(vid_handler)
+
+# Start the bot
+updater.start_polling()
+updater.idle()
