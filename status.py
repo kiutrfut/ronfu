@@ -1,43 +1,32 @@
-import os
-import subprocess
-
-from pyrogram.errors import FilePartsInvalid, FileReferenceEmpty, FileIdInvalid
-from pyrogram.types import Video, Message
+import time
+import datetime
 from pyrogram import Client
+from pyrogram.types import Message
 
 
-def get_file_status(client: Client, chat_id: int, file_id: str) -> str:
-    try:
-        file_info = client.get_file_info(file_id)
-        file_size = file_info.size
-        file_name = file_info.file_name
-        return f"File Name: {file_name}\nFile Size: {file_size} bytes"
-    except (FilePartsInvalid, FileReferenceEmpty, FileIdInvalid):
-        return "Failed to fetch file information."
+async def get_file_status(client: Client, chat_id: int, file_id: str) -> str:
+    file_info = await client.get_file_info(file_id)
+    file_size = file_info.size
+    file_name = file_info.file_name
+    file_download_progress = 0
+    file_upload_progress = 0
 
+    # Get download progress
+    if file_info.is_remote:
+        while file_download_progress < 100:
+            file_info = await client.get_file_info(file_id)
+            file_download_progress = file_info.download_progress
+            time.sleep(1)
 
-def convert_to_streamable_video(client: Client, chat_id: int, file_id: str, file_name: str) -> bool:
-    try:
-        temp_path = os.path.join("temp", file_name)
-        client.download_media(file_id, temp_path)
+    # Get upload progress
+    message = await client.send_message(chat_id, f"Uploading {file_name}...")
+    start_time = time.monotonic()
+    async for status in client.iter_upload_progress(file_id):
+        file_upload_progress = round(status * 100)
+        elapsed_time = time.monotonic() - start_time
+        estimated_total_time = datetime.timedelta(seconds=(elapsed_time / status) - elapsed_time)
+        await message.edit_text(f"Uploading {file_name}... {file_upload_progress}%\n"
+                                f"Elapsed time: {datetime.timedelta(seconds=elapsed_time)}\n"
+                                f"Estimated total time: {estimated_total_time}")
 
-        # Generate output file name with mp4 extension
-        output_file_name = os.path.splitext(file_name)[0] + ".mp4"
-        output_path = os.path.join("temp", output_file_name)
-
-        # Run ffmpeg command to convert file to streamable mp4 format
-        cmd = f"ffmpeg -i {temp_path} -c:v libx264 -profile:v main -level 3.1 -preset medium -crf 23 -c:a aac -b:a 128k -movflags +faststart {output_path}"
-        subprocess.run(cmd, shell=True, check=True)
-
-        # Upload converted video file to Telegram as video message
-        client.send_video(
-            chat_id=chat_id,
-            video=output_path,
-            caption="Converted video",
-            supports_streaming=True
-        )
-
-        return True
-    except Exception as e:
-        print(e)
-        return False
+    return f"{file_name}\nSize: {file_size}\nDownload progress: 100%\nUpload progress: {file_upload_progress}%"
