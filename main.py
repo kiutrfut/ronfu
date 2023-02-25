@@ -1,3 +1,5 @@
+import subprocess
+from pyrogram import types
 import os
 import logging
 from pyrogram import Client, filters
@@ -55,6 +57,22 @@ def convert_command_handler(_, message: Message) -> None:
 
     message.reply_video(video=streamable_path)
 
+def convert_to_streamable_video(chat_id: int, file_id: str, file_name: str, file_path: str) -> str:
+    # Use ffprobe to get the video duration
+    duration = subprocess.check_output(['ffprobe', '-i', file_path, '-show_entries', 'format=duration', '-v', 'quiet', '-of', 'csv=%s' % ("p=0")])
+    duration = int(float(duration))
+
+    # Set the output file name and path
+    streamable_file_name = f"{file_name}_streamable.mp4"
+    streamable_file_path = f"streamable/{chat_id}/{file_id}/{streamable_file_name}"
+
+    # Create the streamable directory if it doesn't exist
+    os.makedirs(os.path.dirname(streamable_file_path), exist_ok=True)
+
+    # Convert the video to a streamable format using ffmpeg
+    subprocess.run(['ffmpeg', '-y', '-i', file_path, '-c:v', 'libx264', '-preset', 'fast', '-profile:v', 'baseline', '-level', '3.0', '-c:a', 'aac', '-movflags', '+faststart', '-vf', f"scale=w=trunc(oh*a/2)*2:h=720,setsar=1:1,drawtext=fontfile=OpenSans-Bold.ttf:text='%{{pts\:gmtime\:{duration}\:%H\\\\\:%M\\\\\:%S}}':x=(w-tw-10):y=(h-th-10):fontsize=30:fontcolor=white:box=1:boxcolor=black@0.5", streamable_file_path])
+
+    return streamable_file_path    
 
 # Start the bot
 if __name__ == "__main__":
