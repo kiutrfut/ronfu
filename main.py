@@ -54,5 +54,5 @@ async def get_status(client, message):
         # if the status message is already set, edit the existing message
         await client.edit_message_text(chat_id=message.chat.id, message_id=status_message_id, text=status_message)
 
-if name == "main":
+if __name__ == "__main__":
     app.run()
