@@ -1,77 +1,75 @@
-import os
-import psutil
-
-from datetime import datetime
-from hurry.filesize import size
-
+import time
 
 class DownloadStatus:
     def init(self, file_size):
         self.file_size = file_size
-        self.start_time = datetime.now()
-        self.downloaded_bytes = 0
-
-    def update(self, chunk):
-        self.downloaded_bytes += len(chunk)
-
+        self.total_downloaded = 0
+        self.start_time = time.time()
+        
+    def update(self, bytes_amount):
+        self.total_downloaded += bytes_amount
+    
+    def get_progress_percentage(self):
+        return round(self.total_downloaded / self.file_size * 100, 2)
+    
+    def get_elapsed_time(self):
+        return time.time() - self.start_time
+    
     def get_speed(self):
-        elapsed_time = (datetime.now() - self.start_time).seconds
-        return self.downloaded_bytes / elapsed_time
-
-    def get_eta(self):
-        bytes_left = self.file_size - self.downloaded_bytes
-        seconds_left = bytes_left / self.get_speed()
-        return str(datetime.now() + timedelta(seconds=seconds_left)).split(".")[0]
-
-    def get_progress(self):
-        progress = self.downloaded_bytes / self.file_size
-        return round(progress * 100)
+        elapsed_time = self.get_elapsed_time()
+        speed = self.total_downloaded / elapsed_time
+        return speed if elapsed_time > 0 else 0
+    
+    def get_remaining_time(self):
+        remaining_bytes = self.file_size - self.total_downloaded
+        remaining_time = remaining_bytes / self.get_speed() if self.get_speed() > 0 else 0
+        return remaining_time
 
 
 class UploadStatus:
     def init(self, file_size):
         self.file_size = file_size
-        self.start_time = datetime.now()
-        self.uploaded_bytes = 0
-
-    def update(self, current, total):
-        self.uploaded_bytes = current
-
+        self.total_uploaded = 0
+        self.start_time = time.time()
+        
+    def update(self, bytes_amount):
+        self.total_uploaded += bytes_amount
+    
+    def get_progress_percentage(self):
+        return round(self.total_uploaded / self.file_size * 100, 2)
+    
+    def get_elapsed_time(self):
+        return time.time() - self.start_time
+    
     def get_speed(self):
-        elapsed_time = (datetime.now() - self.start_time).seconds
-        return self.uploaded_bytes / elapsed_time
+        elapsed_time = self.get_elapsed_time()
+        speed = self.total_uploaded / elapsed_time
+        return speed if elapsed_time > 0 else 0
+    
+    def get_remaining_time(self):
+        remaining_bytes = self.file_size - self.total_uploaded
+        remaining_time = remaining_bytes / self.get_speed() if self.get_speed() > 0 else 0
+        return remaining_time
 
-    def get_eta(self):
-        bytes_left = self.file_size - self.uploaded_bytes
-        seconds_left = bytes_left / self.get_speed()
-        return str(datetime.now() + timedelta(seconds=seconds_left)).split(".")[0]
-
-    def get_progress(self):
-        progress = self.uploaded_bytes / self.file_size
-        return round(progress * 100)
-
-
-def status():
-    process = psutil.Process(os.getpid())
-    memory_used = process.memory_info().rss / 1024 ** 2
-    disk_used = psutil.disk_usage("/").percent
-    cpu_usage = psutil.cpu_percent()
-
-    download_status = app.get_download_status()
-    upload_status = app.get_upload_status()
-
-    message = f"Memory used: {memory_used:.2f} MB\nDisk used: {disk_used}%\nCPU usage: {cpu_usage}%\n\n"
-    if download_status:
-        message += f"Downloading {download_status.name} ({size(download_status.size)})\n"
-        message += f"Progress: {download_status.progress}%\n"
-        message += f"Downloaded: {size(download_status.downloaded_bytes)} of {size(download_status.size)}\n"
-        message += f"Speed: {size(download_status.speed)}/s\n"
-        message += f"ETA: {download_status.eta}\n\n"
-    if upload_status:
-        message += f"Uploading {upload_status.name} ({size(upload_status.size)})\n"
-        message += f"Progress: {upload_status.progress}%\n"
-        message += f"Uploaded: {size(upload_status.uploaded_bytes)} of {size(upload_status.size)}\n"
-        message += f"Speed: {size(upload_status.speed)}/s\n"
-        message += f"ETA: {upload_status.eta}"
-
+def get_status_message(download_status=None, upload_status=None):
+    message = ""
+    
+    if download_status is not None:
+        message += f"Download Status:\n"
+        message += f"Progress: {download_status.get_progress_percentage()}%\n"
+        message += f"Downloaded: {size(download_status.total_downloaded)}\n"
+        message += f"Total Size: {size(download_status.file_size)}\n"
+        message += f"Speed: {size(download_status.get_speed())}/s\n"
+        message += f"Elapsed Time: {time.strftime('%H:%M:%S', time.gmtime(download_status.get_elapsed_time()))}\n"
+        message += f"Remaining Time: {time.strftime('%H:%M:%S', time.gmtime(download_status.get_remaining_time()))}\n\n"
+    
+    if upload_status is not None:
+        message += f"Upload Status:\n"
+        message += f"Progress: {upload_status.get_progress_percentage()}%\n"
+        message += f"Uploaded: {size(upload_status.total_uploaded)}\n"
+        message += f"Total Size: {size(upload_status.file_size)}\n"
+        message += f"Speed: {size(upload_status.get_speed())}/s\n"
+        message += f"Elapsed Time: {time.strftime('%H:%M:%S', time.gmtime(upload_status.get_elapsed_time()))}\n"
+        message += f"Remaining Time: {time.strftime('%H:%M:%S', time.gmtime(upload_status.get_remaining_time()))}\n\n"
+    
     return message
