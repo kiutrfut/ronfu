@@ -53,7 +53,7 @@ def convert_command_handler(_, message: Message) -> None:
     file_name = message.reply_to_message.document.file_name
     chat_id = message.chat.id
     file_path = app.download_media(file_id)
-    streamable_path = convert_to_streamable_video(app, chat_id, file_id, file_name)
+    streamable_path = convert_to_streamable_video(chat_id, file_id, file_name, file_path)
 
     message.reply_video(video=streamable_path)
 
