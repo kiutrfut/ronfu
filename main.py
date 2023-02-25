@@ -41,5 +41,5 @@ async def convert_to_video(client, message):
         os.remove(file_path)
 
 
-if name == "main":
+if __name__ == "__main__":
     app.run()
